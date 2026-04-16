@@ -43,6 +43,14 @@ type ResumeEvaluationActive = {
   updateTime?: string;
 };
 
+type ResumeEvalStreamEvent = {
+  type?: string;
+  content?: string;
+  subType?: string;
+  step?: number;
+  [key: string]: unknown;
+};
+
 type ParsedResult = {
   score: number;
   match: string;
@@ -59,15 +67,15 @@ const parseAnalysisResult = (text: string): ParsedResult | null => {
 
   const cleanText = text.replace(/[*#`]/g, '').trim();
   const scoreMatch =
-    cleanText.match(/鍖归厤搴:锛歕s]+(\d+)/) ||
-    cleanText.match(/璇勫垎[:锛歕s]+(\d+)/) ||
+    cleanText.match(/匹配度[:：\s]+(\d+)/) ||
+    cleanText.match(/评分[:：\s]+(\d+)/) ||
     cleanText.match(/(\d+)\s*\/\s*100/) ||
     cleanText.match(/(\d+)\s*%/);
 
   const score = scoreMatch ? Number(scoreMatch[1]) : 80;
 
   const extractBlock = (keywords: string[]) => {
-    const allKeywords = ['浼樺娍', '椋庨櫓', '涓嶈冻', '寤鸿', '娣辨寲鐐?, '椤圭洰鐪熷疄鎬?, '宀椾綅鍖归厤搴?, '鎶€鏈繁搴?];
+    const allKeywords = ['优势', '风险', '不足', '建议', '深挖点', '项目真实性', '岗位匹配度', '技术深度'];
     const startKeyword = keywords.find((keyword) => cleanText.includes(keyword));
     if (!startKeyword) return [];
 
@@ -83,19 +91,19 @@ const parseAnalysisResult = (text: string): ParsedResult | null => {
 
     return rest
       .slice(0, end)
-      .split(/[\n锛?銆俔/)
-      .map((item) => item.replace(/^[-\d.\s:锛歖+/, '').trim())
+      .split(/[\n；;。]/)
+      .map((item) => item.replace(/^[-\d.\s:：]+/, '').trim())
       .filter(Boolean)
       .slice(0, 6);
   };
 
   return {
     score,
-    match: '鍩轰簬鍚庣璇勪及鎶ュ憡鑷姩瑙ｆ瀽',
-    pros: extractBlock(['浼樺娍']),
-    cons: extractBlock(['椋庨櫓', '涓嶈冻']),
-    suggestions: extractBlock(['寤鸿']),
-    deepDive: extractBlock(['娣辨寲鐐?, '椤圭洰鐪熷疄鎬?, '鎶€鏈繁搴?]),
+    match: '基于后端评估报告自动解析',
+    pros: extractBlock(['优势']),
+    cons: extractBlock(['风险', '不足']),
+    suggestions: extractBlock(['建议']),
+    deepDive: extractBlock(['深挖点', '项目真实性', '技术深度']),
   };
 };
 
@@ -117,6 +125,16 @@ const ResumeAgent = () => {
   const [events, setEvents] = useState<ResumeEvalStreamEvent[]>([]);
   const [result, setResult] = useState<ParsedResult | null>(null);
   const [rawSummary, setRawSummary] = useState('');
+  const timelineEvents = useMemo(
+    () =>
+      events.map((event, index) => ({
+        type: String(event.type || 'event'),
+        subType: String(event.subType || event.type || 'progress'),
+        step: typeof event.step === 'number' ? event.step : index + 1,
+        content: String(event.content || ''),
+      })),
+    [events],
+  );
 
   const stopPolling = () => {
     evalPollerRef.current?.stop();
@@ -136,17 +154,17 @@ const ResumeAgent = () => {
 
   const fetchRecentProfiles = async () => {
     const res = await fetch('/api/v1/resume/profile/recent?limit=20');
-    if (!res.ok) throw new Error('鏌ヨ鍘嗗彶绠€鍘嗗け璐?);
+    if (!res.ok) throw new Error('查询历史简历失败');
     const json = await res.json();
-    if (json.code !== '0000') throw new Error(json.info || '鏌ヨ鍘嗗彶绠€鍘嗗け璐?);
+    if (json.code !== '0000') throw new Error(json.info || '查询历史简历失败');
     return Array.isArray(json.data) ? (json.data as ResumeHistoryItem[]) : [];
   };
 
   const fetchActiveEvaluation = async () => {
     const res = await fetch('/api/v1/resume/evaluation/active');
-    if (!res.ok) throw new Error('鏌ヨ褰撳墠绠€鍘嗚瘎浼板け璐?);
+    if (!res.ok) throw new Error('查询当前简历评估失败');
     const json = await res.json();
-    if (json.code !== '0000') throw new Error(json.info || '鏌ヨ褰撳墠绠€鍘嗚瘎浼板け璐?);
+    if (json.code !== '0000') throw new Error(json.info || '查询当前简历评估失败');
     return (json.data || null) as ResumeEvaluationActive | null;
   };
 
@@ -171,7 +189,7 @@ const ResumeAgent = () => {
         resumeId: evaluation.resumeId,
         knowledgeSpaceId: evaluation.knowledgeSpaceId || 0,
         knowledgeTag: 'resume_profile',
-        fileName: `绠€鍘?${evaluation.resumeId}`,
+        fileName: `简历-${evaluation.resumeId}`,
         chunkCount: 0,
         createTime: '',
         updateTime: '',
@@ -273,7 +291,7 @@ const ResumeAgent = () => {
       const profileList = await fetchRecentProfiles();
       setProfiles(profileList);
     } catch (err) {
-      setHistoryError((err as Error).message || '鏌ヨ鍘嗗彶绠€鍘嗗け璐?);
+      setHistoryError((err as Error).message || '查询历史简历失败');
     } finally {
       setHistoryLoading(false);
     }
@@ -293,13 +311,13 @@ const ResumeAgent = () => {
     setRawSummary('');
     stopPolling();
 
-    const reqBody = {
-      resumeId: fileContext.resumeId,
-      knowledgeSpaceId: fileContext.knowledgeSpaceId,
-      question: '璇蜂粠宀椾綅鍖归厤搴︺€佹妧鏈繁搴︺€侀」鐩湡瀹炴€с€佷紭鍔裤€侀闄╃偣鍜屼慨鏀瑰缓璁叚涓淮搴﹁瘎浼拌繖浠界畝鍘嗐€?,
-      sessionId: makeSessionId('resume-eval', fileContext.resumeId),
-      maxStep: 5,
-    };
+      const reqBody = {
+        resumeId: fileContext.resumeId,
+        knowledgeSpaceId: fileContext.knowledgeSpaceId,
+        question: '请从岗位匹配度、技术深度、项目真实性、优势、风险点和修改建议六个维度评估这份简历。',
+        sessionId: makeSessionId('resume-eval', fileContext.resumeId),
+        maxStep: 5,
+      };
 
     const ctrl = new AbortController();
     activeStreamCtrl.current = ctrl;
@@ -352,8 +370,8 @@ const ResumeAgent = () => {
           }
         }
       }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
+    } catch (err: unknown) {
+      if (!(err instanceof Error) || err.name !== 'AbortError') {
         console.error('SSE fetch error:', err);
       }
     } finally {
@@ -364,28 +382,29 @@ const ResumeAgent = () => {
 
   const canJumpToInterview = Boolean(result || rawSummary) && Boolean(fileContext);
   const statusText = useMemo(() => {
-    if (isRestoring) return '鎭㈠涓?..';
-    if (isEvaluating || activeEvaluation?.status === 'RUNNING') return '璇勪及杩涜涓?;
+    if (isRestoring) return '恢复中...';
+    if (isEvaluating || activeEvaluation?.status === 'RUNNING') return '评估进行中';
     if (activeEvaluation?.status) return activeEvaluation.status;
-    return '寰呮墽琛?;
+    return '待执行';
   }, [activeEvaluation?.status, isEvaluating, isRestoring]);
 
   return (
     <div className="flex gap-6 h-full items-stretch overflow-hidden">
       <div style={{ width: 300 }} className="flex-col gap-4 h-full overflow-y-auto pr-1 shrink-0">
         <div className="card flex-col gap-4">
-          <h3 className="font-bold text-lg">绠€鍘嗚В鏋愰厤缃?/h3>
+          <h3 className="font-bold text-lg">简历解析配置</h3>
 
           <input type="file" accept=".pdf,.doc,.docx" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
 
           <div className="grid grid-cols-2 gap-2">
             <button className="btn btn-secondary btn-sm" type="button" onClick={triggerUpload} disabled={isUploading || isEvaluating}>
               <Upload size={14} />
-              {fileContext ? '閲嶆柊涓婁紶' : '涓婁紶绠€鍘?}
+              {fileContext ? '重新上传' : '上传简历'}
             </button>
             <button className="btn btn-secondary btn-sm" type="button" onClick={() => void openHistoryModal()} disabled={isEvaluating}>
               <History size={14} />
-              鍘嗗彶绠€鍘?            </button>
+              历史简历
+            </button>
           </div>
 
           {!fileContext ? (
@@ -395,8 +414,8 @@ const ResumeAgent = () => {
               onClick={triggerUpload}
             >
               <Upload className="text-primary" size={24} />
-              <div className="text-sm font-semibold text-primary">{isUploading ? '姝ｅ湪涓婁紶骞跺垏鐗?..' : '鐐瑰嚮涓婁紶绠€鍘嗭紙PDF / DOC / DOCX锛?}</div>
-              <div className="text-xs text-muted">涔熷彲浠ヤ粠鍘嗗彶绠€鍘嗕腑鐩存帴閫夋嫨</div>
+              <div className="text-sm font-semibold text-primary">{isUploading ? '正在上传并切片...' : '点击上传简历（PDF / DOC / DOCX）'}</div>
+              <div className="text-xs text-muted">也可以从历史简历中直接选择</div>
             </div>
           ) : (
             <div className="card" style={{ background: '#f5f7fa', borderColor: 'var(--primary)' }}>
@@ -415,14 +434,14 @@ const ResumeAgent = () => {
             <label className="text-sm font-semibold">鐩爣宀椾綅</label>
             <select className="input">
               <option>Java 鍚庣寮€鍙戝伐绋嬪笀</option>
-              <option>AI Agent 鐮斿彂宸ョ▼甯?/option>
-              <option>鏋舵瀯甯?/option>
+              <option>AI Agent 研发工程师</option>
+              <option>架构师</option>
             </select>
           </div>
 
           <button className="btn btn-primary mt-4" style={{ width: '100%', height: 40 }} disabled={!fileContext || isEvaluating} onClick={() => void startEval()}>
             <PlayCircle size={18} />
-            {isEvaluating ? '璇勪及鎵ц涓?..' : '寮€濮嬬粨鏋勫寲璇勪及'}
+            {isEvaluating ? '评估执行中...' : '开始结构化评估'}
           </button>
 
           {canJumpToInterview && fileContext && (
@@ -431,26 +450,26 @@ const ResumeAgent = () => {
               style={{ width: '100%', height: 40, borderColor: 'var(--warning)', color: 'var(--warning)' }}
               onClick={() => navigate('/interview', { state: { resumeId: fileContext.resumeId, ksId: fileContext.knowledgeSpaceId } })}
             >
-              <Mic size={18} /> 杩涘叆妯℃嫙闈㈣瘯鐜妭
+              <Mic size={18} /> 进入模拟面试环节
             </button>
           )}
 
           <div className="text-sm text-muted border-t pt-3">
-            <div>褰撳墠鐘舵€侊細{statusText}</div>
-            <div>褰撳墠浠诲姟锛歿activeEvaluation?.taskId || '-'}</div>
-            <div>鍘嗗彶绠€鍘嗘暟锛歿profiles.length}</div>
+            <div>当前状态：{statusText}</div>
+            <div>当前任务：{activeEvaluation?.taskId || '-'}</div>
+            <div>历史简历数：{profiles.length}</div>
           </div>
         </div>
       </div>
 
       <div className="flex-col gap-4 min-w-0 overflow-hidden" style={{ flex: 1 }}>
         <div className="card flex-col h-full overflow-hidden" style={{ minHeight: 0 }}>
-          <h2 className="font-bold text-xl mb-4 border-b pb-2 shrink-0">绠€鍘嗗缁磋瘎浼版姤鍛?/h2>
+          <h2 className="font-bold text-xl mb-4 border-b pb-2 shrink-0">简历多维评估报告</h2>
 
           {!result && !rawSummary ? (
             <div className="flex-col items-center justify-center text-muted min-h-0" style={{ flex: 1 }}>
               <FileText className="mb-2 opacity-50" size={48} />
-              <div>{isRestoring ? '姝ｅ湪鎭㈠鏈€杩戣瘎浼扮粨鏋?..' : '绛夊緟璇勪及缁撴灉...'}</div>
+                <div>{isRestoring ? '正在恢复最近评估结果...' : '等待评估结果...'}</div>
             </div>
           ) : (
             <div className="flex-col gap-6 fade-in overflow-y-auto pr-1 min-h-0" style={{ flex: 1 }}>
@@ -474,7 +493,7 @@ const ResumeAgent = () => {
                   </div>
                   <div className="flex-col gap-1">
                     <div className="font-bold text-lg">{result.match}</div>
-                    <div className="text-sm text-secondary">缁撴灉浠ュ悗绔渶杩戜竴娆¤瘎浼版姤鍛婁负鍑嗭紝鍒囬〉鎴栧埛鏂板悗浼氳嚜鍔ㄦ仮澶嶃€?/div>
+                    <div className="text-sm text-secondary">结果以后端最近一次评估报告为准，切页或刷新后会自动恢复。</div>
                   </div>
                 </div>
               )}
@@ -498,7 +517,7 @@ const ResumeAgent = () => {
                     </ul>
                   </div>
                   <div className="card bg-gray-50 flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-danger"><AlertTriangle size={16} /> 椋庨櫓鐐?/div>
+                    <div className="flex items-center gap-2 font-bold text-danger"><AlertTriangle size={16} /> 风险点</div>
                     <ul className="text-sm flex-col gap-1 list-disc pl-4 text-secondary">
                       {(result.cons.length ? result.cons : ['璇风粨鍚堜笂鏂规姤鍛婃煡鐪嬮闄╅」']).map((txt, i) => <li key={i}>{txt}</li>)}
                     </ul>
@@ -506,11 +525,11 @@ const ResumeAgent = () => {
                   <div className="card bg-gray-50 flex-col gap-2">
                     <div className="flex items-center gap-2 font-bold text-primary"><Lightbulb size={16} /> 淇敼寤鸿</div>
                     <ul className="text-sm flex-col gap-1 list-disc pl-4 text-secondary">
-                      {(result.suggestions.length ? result.suggestions : ['璇风粨鍚堜笂鏂规姤鍛婃煡鐪嬪缓璁?]).map((txt, i) => <li key={i}>{txt}</li>)}
+                      {(result.suggestions.length ? result.suggestions : ['请结合上方报告查看建议项']).map((txt, i) => <li key={i}>{txt}</li>)}
                     </ul>
                   </div>
                   <div className="card bg-gray-50 flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-warning"><Search size={16} /> 闈㈣瘯娣辨寲鐐?/div>
+                    <div className="flex items-center gap-2 font-bold text-warning"><Search size={16} /> 面试深挖点</div>
                     <ul className="text-sm flex-col gap-2 text-secondary">
                       {(result.deepDive.length ? result.deepDive : ['璇风粨鍚堜笂鏂规姤鍛婃煡鐪嬫繁鎸栫偣']).map((txt, i) => (
                         <li key={i} className="flex items-start gap-2 bg-white p-2 rounded border">
@@ -528,7 +547,7 @@ const ResumeAgent = () => {
 
       <div style={{ width: 350 }} className="h-full shrink-0">
         <div className="card h-full overflow-y-auto">
-          <AgentTimeline events={events} isStreaming={isEvaluating} />
+          <AgentTimeline events={timelineEvents} isStreaming={isEvaluating} />
         </div>
       </div>
 
@@ -541,7 +560,8 @@ const ResumeAgent = () => {
             <div className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center gap-2 font-bold">
                 <History size={18} />
-                鍘嗗彶绠€鍘?              </div>
+                历史简历
+              </div>
               <button className="btn btn-sm" type="button" onClick={() => setHistoryOpen(false)}>
                 <X size={14} />
                 鍏抽棴
@@ -549,14 +569,14 @@ const ResumeAgent = () => {
             </div>
 
             <div className="overflow-y-auto p-4 flex-col gap-3" style={{ flex: 1 }}>
-              {historyLoading && <div className="text-sm text-muted text-center py-10">鍔犺浇涓?..</div>}
+              {historyLoading && <div className="text-sm text-muted text-center py-10">加载中...</div>}
 
               {!historyLoading && historyError && (
                 <div className="text-sm text-orange-700 bg-orange-50 border border-orange-200 rounded p-3">{historyError}</div>
               )}
 
               {!historyLoading && !historyError && profiles.length === 0 && (
-                <div className="text-sm text-muted text-center py-10">鏆傛棤鍘嗗彶绠€鍘?/div>
+                <div className="text-sm text-muted text-center py-10">暂无历史简历</div>
               )}
 
               {!historyLoading && !historyError && profiles.length > 0 && (
@@ -569,12 +589,12 @@ const ResumeAgent = () => {
                       onClick={() => handleSelectHistoryResume(item)}
                     >
                       <div className="flex items-center justify-between gap-4">
-                        <div className="font-semibold text-main break-words">{item.fileName || `绠€鍘?${item.resumeId}`}</div>
+                        <div className="font-semibold text-main break-words">{item.fileName || `简历-${item.resumeId}`}</div>
                         <div className="text-xs text-muted shrink-0">Resume ID {item.resumeId}</div>
                       </div>
                       <div className="flex flex-wrap gap-4 mt-3 text-xs text-muted">
-                        <span>鐭ヨ瘑绌洪棿 {item.knowledgeSpaceId}</span>
-                        <span>鍒嗙墖 {item.chunkCount ?? '-'}</span>
+                        <span>知识空间 {item.knowledgeSpaceId}</span>
+                        <span>分片 {item.chunkCount ?? '-'}</span>
                         <span className="flex items-center gap-1">
                           <Clock3 size={12} />
                           {item.updateTime || item.createTime || '-'}

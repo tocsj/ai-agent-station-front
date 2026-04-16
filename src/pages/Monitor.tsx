@@ -320,11 +320,14 @@ const Monitor = () => {
     }
 
     let cancelled = false;
-    setDetailState({ loading: true });
-    setExecutionDetail(null);
-    setSelectedStepName('');
-    setLlmCalls([]);
-    setLlmState({ loading: true });
+    const resetTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      setDetailState({ loading: true });
+      setExecutionDetail(null);
+      setSelectedStepName('');
+      setLlmCalls([]);
+      setLlmState({ loading: true });
+    }, 0);
 
     fetchApi<AuditExecutionDetail>(`/api/v1/audit/execution/${traceId}`)
       .then((data) => {
@@ -350,6 +353,7 @@ const Monitor = () => {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(resetTimer);
     };
   }, [selectedEvent]);
 
@@ -388,11 +392,11 @@ const Monitor = () => {
         <div className="card flex-col gap-4">
           <div>
             <div className="text-2xl font-bold">瀹¤鐩戞帶涓績</div>
-            <div className="text-sm text-muted mt-1">缁熶竴鏌ョ湅鍐呭鑷姩鍙戝竷銆佹枃妗ｇ煡璇嗗姪鎵嬨€佺畝鍘嗚瘎浼板拰妯℃嫙闈㈣瘯鐨勬墽琛岀姸鎬併€乀oken 娑堣€楀拰寮傚父浜嬩欢銆?/div>
+            <div className="text-sm text-muted mt-1">统一查看内容自动化、文档知识助手、简历评估和模拟面试的执行状态、Token 消耗和异常事件。</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 240px))', gap: 16 }}>
             <div className="flex-col gap-2">
-              <span className="text-sm font-semibold">鏃堕棿鑼冨洿</span>
+              <span className="text-sm font-semibold">时间范围</span>
               <select className="input" value={filters.range} onChange={(e) => handleFilterChange('range', e.target.value as AuditFilters['range'])}>
                 {RANGE_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -402,7 +406,7 @@ const Monitor = () => {
               </select>
             </div>
             <div className="flex-col gap-2">
-              <span className="text-sm font-semibold">浠诲姟绫诲瀷</span>
+              <span className="text-sm font-semibold">任务类型</span>
               <select className="input" value={filters.taskType} onChange={(e) => handleFilterChange('taskType', e.target.value as AuditFilters['taskType'])}>
                 {TASK_TYPE_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -412,7 +416,7 @@ const Monitor = () => {
               </select>
             </div>
             <div className="flex-col gap-2">
-              <span className="text-sm font-semibold">鐘舵€?/span>
+              <span className="text-sm font-semibold">状态</span>
               <select className="input" value={filters.status} onChange={(e) => handleFilterChange('status', e.target.value as AuditFilters['status'])}>
                 {STATUS_OPTIONS.map((item) => (
                   <option key={item.value} value={item.value}>
@@ -423,7 +427,7 @@ const Monitor = () => {
             </div>
           </div>
           <div className="text-xs text-muted">
-            褰撳墠娓犻亾绛涢€夛細{filters.channel || '鏈瓫閫?} 路 褰撳墠鐘舵€佺瓫閫夛細{STATUS_LABELS[filters.status] || '鍏ㄩ儴'}
+            当前渠道筛选：{filters.channel || '未筛选'} | 当前状态筛选：{STATUS_LABELS[filters.status] || '全部'}
           </div>
         </div>
 
