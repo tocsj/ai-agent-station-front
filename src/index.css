@@ -693,6 +693,15 @@ textarea:disabled {
   }
 }
 
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0.12);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
 .card {
   background: var(--bg-elevated);
   border: 1px solid rgba(196, 212, 232, 0.72);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { AuditTaskTrendItem } from './types';
 
 type AuditTrendPanelProps = {
@@ -38,13 +38,6 @@ const BarChart = ({
   series: TrendSeriesItem[];
 }) => {
   const [hoveredKey, setHoveredKey] = useState<string>('');
-  const [animateIn, setAnimateIn] = useState(false);
-
-  useEffect(() => {
-    setAnimateIn(false);
-    const timer = window.setTimeout(() => setAnimateIn(true), 24);
-    return () => window.clearTimeout(timer);
-  }, [items, series]);
 
   const maxValue = Math.max(1, ...items.flatMap((item) => series.map((entry) => Number(item[entry.key] || 0))));
 
@@ -152,11 +145,12 @@ const BarChart = ({
                         background: entry.color,
                         border: `1px solid ${active ? 'rgba(17,35,58,0.24)' : entry.border}`,
                         boxShadow: active ? '0 18px 28px rgba(17,35,58,0.18)' : '0 10px 18px rgba(17,35,58,0.08)',
-                        transform: animateIn ? 'scaleY(1)' : 'scaleY(0.12)',
                         transformOrigin: 'bottom center',
                         transition:
-                          'transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1), border-color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease',
+                          'border-color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease',
                         transitionDelay: `${index * 50 + entryIndex * 35}ms`,
+                        animation: 'bar-grow 0.5s cubic-bezier(0.2, 0.9, 0.2, 1) both',
+                        animationDelay: `${index * 50 + entryIndex * 35}ms`,
                         filter: active ? 'brightness(1.04)' : 'none',
                         cursor: 'pointer',
                       }}
