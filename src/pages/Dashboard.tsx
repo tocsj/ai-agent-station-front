@@ -109,18 +109,15 @@ const Dashboard = () => {
       setError('');
       try {
         const data = await fetchApi<WorkbenchSnapshot>(`/api/v1/workbench/dashboard?range=${range}&recentLimit=10`);
-        if (cancelled) return;
-        setSnapshot(data);
+        if (!cancelled) setSnapshot(data);
       } catch (err) {
-        if (cancelled) return;
-        setError((err as Error).message || '加载工作台失败');
+        if (!cancelled) setError((err as Error).message || '加载工作台失败');
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
 
     void loadDashboard();
-
     return () => {
       cancelled = true;
     };
@@ -200,20 +197,28 @@ const Dashboard = () => {
   return (
     <>
       <div className="flex-col gap-6 h-full overflow-y-auto pr-1">
-        <div className="card flex-col gap-4" style={{ background: 'linear-gradient(to right, var(--primary-bg), #fff)' }}>
+        <div
+          className="card flex-col gap-4"
+          style={{
+            background:
+              'linear-gradient(135deg, rgba(238,245,255,0.96) 0%, rgba(255,255,255,0.96) 54%, rgba(241,255,248,0.94) 100%)',
+          }}
+        >
           <div className="flex items-start justify-between gap-6">
-            <div>
-              <h2 className="text-xl font-bold mb-2">工作台大盘</h2>
-              <p className="text-muted">首页只展示平台摘要、能力导航和最近运行记录。详细执行监控请进入审计监控中心。</p>
+            <div style={{ maxWidth: 720 }}>
+              <h2 className="text-2xl font-bold mb-2">工作台大盘</h2>
+              <p className="text-muted">
+                首页只承载平台摘要、能力导航和最近执行记录。趋势图、模型指标和步骤明细继续放在审计监控中心。
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <select className="input" style={{ width: 120 }} value={range} onChange={(e) => setRange(e.target.value as WorkbenchRange)}>
                 <option value="today">今日</option>
-                <option value="7d">近7天</option>
-                <option value="30d">近30天</option>
+                <option value="7d">近 7 天</option>
+                <option value="30d">近 30 天</option>
               </select>
               <span className={`badge ${snapshot?.platform?.apiStatus === 'RUNNING' ? 'badge-green' : 'badge-orange'}`}>
-                {(snapshot?.platform?.apiVersion || 'v1.x')} {snapshot?.platform?.statusText || '平台状态未知'}
+                {snapshot?.platform?.apiVersion || 'v1.x'} {snapshot?.platform?.statusText || '平台状态未知'}
               </span>
             </div>
           </div>
@@ -228,8 +233,9 @@ const Dashboard = () => {
               <button
                 key={card.taskType}
                 type="button"
-                className="card flex-col gap-2 text-left hover:border-primary transition-colors"
+                className="card flex-col gap-2 text-left transition-transform"
                 onClick={() => navigate(ROUTE_MAP[card.routePath || ''] || '/dashboard')}
+                style={{ minHeight: 182 }}
               >
                 <div className="font-bold text-base">{card.taskTypeName}</div>
                 <p className="text-sm text-secondary leading-relaxed">{card.description || '暂无描述'}</p>
@@ -275,7 +281,7 @@ const Dashboard = () => {
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
-                  <tr style={{ background: '#f5f7fa', borderBottom: '1px solid var(--border-color)' }}>
+                  <tr style={{ background: '#f6f8fc', borderBottom: '1px solid var(--border-color)' }}>
                     <th className="p-4 text-sm font-semibold">任务编号</th>
                     <th className="p-4 text-sm font-semibold">任务类型</th>
                     <th className="p-4 text-sm font-semibold">耗时</th>
@@ -287,7 +293,7 @@ const Dashboard = () => {
                 </thead>
                 <tbody>
                   {(snapshot?.recentRuns || []).map((run) => (
-                    <tr key={run.traceId} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <tr key={run.traceId} style={{ borderBottom: '1px solid rgba(219, 229, 242, 0.88)' }}>
                       <td className="p-4 text-sm font-mono">{run.displayTaskId || run.taskId || '-'}</td>
                       <td className="p-4 text-sm">
                         <div className="font-semibold text-primary">{run.taskTypeName || '-'}</div>

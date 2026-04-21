@@ -2,8 +2,8 @@ import type { AuditRange, AuditStatus, AuditTaskType } from './types';
 
 export const RANGE_OPTIONS: Array<{ value: AuditRange; label: string; days: number }> = [
   { value: 'today', label: '今日', days: 1 },
-  { value: '7d', label: '近7天', days: 7 },
-  { value: '30d', label: '近30天', days: 30 },
+  { value: '7d', label: '近 7 天', days: 7 },
+  { value: '30d', label: '近 30 天', days: 30 },
 ];
 
 export const TASK_TYPE_OPTIONS: Array<{ value: 'all' | AuditTaskType; label: string }> = [
@@ -23,6 +23,7 @@ export const STATUS_OPTIONS: Array<{ value: 'all' | AuditStatus; label: string }
 ];
 
 export const STATUS_LABELS: Record<string, string> = {
+  all: '全部',
   SUCCESS: '成功',
   FAILED: '失败',
   RUNNING: '运行中',

@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import type { AuditTaskTrendItem } from './types';
 
 type AuditTrendPanelProps = {
@@ -6,67 +7,174 @@ type AuditTrendPanelProps = {
   error?: string;
 };
 
-const TASK_SERIES = [
-  { key: 'taskTotal', label: '总量', color: '#1677ff' },
-  { key: 'successTotal', label: '成功', color: '#00b42a' },
-  { key: 'failedTotal', label: '失败', color: '#f53f3f' },
-] as const;
-
-const TOKEN_SERIES = [
-  { key: 'promptTokens', label: 'Prompt', color: '#7c3aed' },
-  { key: 'completionTokens', label: 'Completion', color: '#f59e0b' },
-  { key: 'totalTokens', label: '总 Tokens', color: '#14b8a6' },
-] as const;
-
-const buildPath = (values: number[], width: number, height: number, maxValue: number) => {
-  if (values.length === 0) return '';
-  const stepX = values.length === 1 ? 0 : width / (values.length - 1);
-  return values
-    .map((value, index) => {
-      const x = index * stepX;
-      const y = height - (value / Math.max(maxValue, 1)) * height;
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(' ');
+type TrendSeriesItem = {
+  key: keyof AuditTaskTrendItem;
+  label: string;
+  color: string;
+  border: string;
 };
 
-const TrendChart = ({
+const TASK_SERIES: TrendSeriesItem[] = [
+  { key: 'taskTotal', label: '总量', color: 'linear-gradient(180deg, rgba(22,119,255,0.95) 0%, rgba(94,158,255,0.95) 100%)', border: 'rgba(22,119,255,0.34)' },
+  { key: 'successTotal', label: '成功', color: 'linear-gradient(180deg, rgba(24,169,87,0.95) 0%, rgba(68,206,122,0.92) 100%)', border: 'rgba(24,169,87,0.3)' },
+  { key: 'failedTotal', label: '失败', color: 'linear-gradient(180deg, rgba(228,79,94,0.95) 0%, rgba(246,128,128,0.92) 100%)', border: 'rgba(228,79,94,0.28)' },
+];
+
+const TOKEN_SERIES: TrendSeriesItem[] = [
+  { key: 'promptTokens', label: 'Prompt', color: 'linear-gradient(180deg, rgba(124,58,237,0.95) 0%, rgba(167,110,255,0.9) 100%)', border: 'rgba(124,58,237,0.28)' },
+  { key: 'completionTokens', label: 'Completion', color: 'linear-gradient(180deg, rgba(245,158,11,0.95) 0%, rgba(251,191,36,0.92) 100%)', border: 'rgba(245,158,11,0.28)' },
+  { key: 'totalTokens', label: '总 Tokens', color: 'linear-gradient(180deg, rgba(20,184,166,0.95) 0%, rgba(45,212,191,0.9) 100%)', border: 'rgba(20,184,166,0.28)' },
+];
+
+const formatNumber = (value?: number) => (typeof value === 'number' ? value.toLocaleString() : '-');
+
+const BarChart = ({
   title,
   items,
   series,
-  maxValue,
 }: {
   title: string;
   items: AuditTaskTrendItem[];
-  series: Array<{ key: keyof AuditTaskTrendItem; label: string; color: string }>;
-  maxValue: number;
-}) => (
-  <div className="flex-col gap-3">
-    <div className="flex items-center justify-between">
-      <div className="text-sm font-semibold">{title}</div>
-      <div className="flex items-center gap-3 text-xs text-muted">
-        {series.map((item) => (
-          <span key={item.key} className="flex items-center gap-1">
-            <span style={{ width: 10, height: 10, borderRadius: 999, background: item.color, display: 'inline-block' }} />
-            {item.label}
-          </span>
+  series: TrendSeriesItem[];
+}) => {
+  const [hoveredKey, setHoveredKey] = useState<string>('');
+  const [animateIn, setAnimateIn] = useState(false);
+
+  useEffect(() => {
+    setAnimateIn(false);
+    const timer = window.setTimeout(() => setAnimateIn(true), 24);
+    return () => window.clearTimeout(timer);
+  }, [items, series]);
+
+  const maxValue = Math.max(1, ...items.flatMap((item) => series.map((entry) => Number(item[entry.key] || 0))));
+
+  return (
+    <div className="flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-semibold">{title}</div>
+        <div className="flex items-center gap-3 text-xs text-muted">
+          {series.map((item) => (
+            <span key={item.key} className="flex items-center gap-1">
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 999,
+                  display: 'inline-block',
+                  background: item.color,
+                  border: `1px solid ${item.border}`,
+                }}
+              />
+              {item.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div
+        style={{
+          position: 'relative',
+          display: 'grid',
+          gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
+          gap: 14,
+          padding: '22px 6px 0',
+          minHeight: 252,
+          alignItems: 'end',
+          background:
+            'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(239,244,251,0.42) 100%)',
+          borderRadius: 8,
+        }}
+      >
+        {[25, 50, 75, 100].map((percent) => (
+          <div
+            key={percent}
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: `${percent}%`,
+              borderTop: '1px dashed rgba(196, 212, 232, 0.7)',
+              pointerEvents: 'none',
+            }}
+          />
+        ))}
+
+        {items.map((item, index) => (
+          <div key={item.date} className="flex-col justify-end" style={{ minWidth: 0, display: 'flex', gap: 10, height: '100%' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'end', flex: 1, minHeight: 200 }}>
+              {series.map((entry, entryIndex) => {
+                const value = Number(item[entry.key] || 0);
+                const height = Math.max(10, (value / maxValue) * 176);
+                const active = hoveredKey === `${item.date}-${String(entry.key)}`;
+
+                return (
+                  <div
+                    key={entry.key}
+                    style={{
+                      flex: 1,
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'end',
+                      justifyContent: 'center',
+                      minWidth: 0,
+                    }}
+                    onMouseEnter={() => setHoveredKey(`${item.date}-${String(entry.key)}`)}
+                    onMouseLeave={() => setHoveredKey('')}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: height + 10,
+                        opacity: active ? 1 : 0,
+                        transform: active ? 'translateY(0)' : 'translateY(6px)',
+                        transition: 'opacity 0.18s ease, transform 0.18s ease',
+                        pointerEvents: 'none',
+                        whiteSpace: 'nowrap',
+                        padding: '6px 9px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: 'var(--text-main)',
+                        background: 'rgba(255,255,255,0.96)',
+                        border: `1px solid ${entry.border}`,
+                        boxShadow: '0 12px 22px rgba(17,35,58,0.12)',
+                        zIndex: 2,
+                      }}
+                    >
+                      {entry.label}：{formatNumber(value)}
+                    </div>
+                    <div
+                      style={{
+                        width: '100%',
+                        maxWidth: 34,
+                        height,
+                        borderRadius: '8px 8px 4px 4px',
+                        background: entry.color,
+                        border: `1px solid ${active ? 'rgba(17,35,58,0.24)' : entry.border}`,
+                        boxShadow: active ? '0 18px 28px rgba(17,35,58,0.18)' : '0 10px 18px rgba(17,35,58,0.08)',
+                        transform: animateIn ? 'scaleY(1)' : 'scaleY(0.12)',
+                        transformOrigin: 'bottom center',
+                        transition:
+                          'transform 0.5s cubic-bezier(0.2, 0.9, 0.2, 1), border-color 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease',
+                        transitionDelay: `${index * 50 + entryIndex * 35}ms`,
+                        filter: active ? 'brightness(1.04)' : 'none',
+                        cursor: 'pointer',
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="text-xs text-muted text-center">{item.date.slice(5)}</div>
+          </div>
         ))}
       </div>
     </div>
-    <svg viewBox="0 0 420 140" style={{ width: '100%', height: 140 }}>
-      <line x1="0" y1="140" x2="420" y2="140" stroke="#d9dde5" strokeWidth="1" />
-      {series.map((item) => {
-        const values = items.map((row) => Number(row[item.key] || 0));
-        return <path key={item.key} d={buildPath(values, 420, 130, maxValue)} fill="none" stroke={item.color} strokeWidth="3" strokeLinecap="round" />;
-      })}
-    </svg>
-  </div>
-);
+  );
+};
 
 const AuditTrendPanel = ({ items, loading, error }: AuditTrendPanelProps) => {
-  const chartItems = items.slice(-Math.min(items.length, 30));
-  const taskMax = Math.max(1, ...chartItems.flatMap((item) => [item.taskTotal, item.successTotal, item.failedTotal]));
-  const tokenMax = Math.max(1, ...chartItems.flatMap((item) => [item.promptTokens, item.completionTokens, item.totalTokens]));
+  const chartItems = useMemo(() => items.slice(-Math.min(items.length, 14)), [items]);
 
   return (
     <div className="card flex-col gap-4">
@@ -78,16 +186,9 @@ const AuditTrendPanel = ({ items, loading, error }: AuditTrendPanelProps) => {
       ) : chartItems.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-sm text-muted">暂无趋势数据</div>
       ) : (
-        <div className="flex-col gap-4">
-          <TrendChart title="任务量趋势" items={chartItems} series={TASK_SERIES as unknown as Array<{ key: keyof AuditTaskTrendItem; label: string; color: string }>} maxValue={taskMax} />
-          <TrendChart title="Token 趋势" items={chartItems} series={TOKEN_SERIES as unknown as Array<{ key: keyof AuditTaskTrendItem; label: string; color: string }>} maxValue={tokenMax} />
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${chartItems.length}, minmax(0, 1fr))`, gap: 8 }}>
-            {chartItems.map((item) => (
-              <div key={item.date} className="text-xs text-muted text-center">
-                {item.date.slice(5)}
-              </div>
-            ))}
-          </div>
+        <div className="flex-col gap-6">
+          <BarChart title="任务量趋势" items={chartItems} series={TASK_SERIES} />
+          <BarChart title="Token 趋势" items={chartItems} series={TOKEN_SERIES} />
         </div>
       )}
     </div>

@@ -421,19 +421,21 @@ const ResumeAgent = () => {
             <div className="card" style={{ background: '#f5f7fa', borderColor: 'var(--primary)' }}>
               <div className="flex items-center gap-3">
                 <File className="text-primary" size={24} />
-                <div className="flex-col">
-                  <div className="font-bold text-sm max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{fileContext.fileName}</div>
-                  <div className="text-xs text-muted mt-1">Resume ID: {fileContext.resumeId} 路 Chunks: {fileContext.chunkCount || '-'}</div>
-                  <div className="text-xs text-muted truncate max-w-[200px]">Space: {fileContext.knowledgeTag || fileContext.knowledgeSpaceId}</div>
+                <div className="flex-col min-w-0" style={{ flex: 1 }}>
+                  <div className="font-bold text-sm break-words" style={{ whiteSpace: 'normal', lineHeight: 1.6 }}>
+                    {fileContext.fileName}
+                  </div>
+                  <div className="text-xs text-muted mt-1">Resume ID: {fileContext.resumeId} · Chunks: {fileContext.chunkCount || '-'}</div>
+                  <div className="text-xs text-muted break-all">Space: {fileContext.knowledgeTag || fileContext.knowledgeSpaceId}</div>
                 </div>
               </div>
             </div>
           )}
 
           <div className="flex-col gap-2 mt-2">
-            <label className="text-sm font-semibold">鐩爣宀椾綅</label>
+            <label className="text-sm font-semibold">目标岗位</label>
             <select className="input">
-              <option>Java 鍚庣寮€鍙戝伐绋嬪笀</option>
+              <option>Java 后端开发工程师</option>
               <option>AI Agent 研发工程师</option>
               <option>架构师</option>
             </select>
@@ -502,7 +504,7 @@ const ResumeAgent = () => {
                 <div className="p-5 bg-white border border-gray-200 shadow-sm rounded text-sm text-secondary leading-relaxed markdown-body">
                   <div className="font-bold text-primary mb-4 pb-2 border-b flex items-center gap-2">
                     <FileText size={18} />
-                    鍚庣璇勪及鎶ュ憡
+                    后端评估报告
                   </div>
                   <ReactMarkdown>{rawSummary}</ReactMarkdown>
                 </div>
@@ -511,19 +513,19 @@ const ResumeAgent = () => {
               {result && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div className="card bg-gray-50 flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-success"><CheckCircle size={16} /> 鏍稿績浼樺娍</div>
+                    <div className="flex items-center gap-2 font-bold text-success"><CheckCircle size={16} /> 核心优势</div>
                     <ul className="text-sm flex-col gap-1 list-disc pl-4 text-secondary">
-                      {(result.pros.length ? result.pros : ['璇风粨鍚堜笂鏂规姤鍛婃煡鐪嬩紭鍔块」']).map((txt, i) => <li key={i}>{txt}</li>)}
+                      {(result.pros.length ? result.pros : ['请结合上方报告查看优势项']).map((txt, i) => <li key={i}>{txt}</li>)}
                     </ul>
                   </div>
                   <div className="card bg-gray-50 flex-col gap-2">
                     <div className="flex items-center gap-2 font-bold text-danger"><AlertTriangle size={16} /> 风险点</div>
                     <ul className="text-sm flex-col gap-1 list-disc pl-4 text-secondary">
-                      {(result.cons.length ? result.cons : ['璇风粨鍚堜笂鏂规姤鍛婃煡鐪嬮闄╅」']).map((txt, i) => <li key={i}>{txt}</li>)}
+                      {(result.cons.length ? result.cons : ['请结合上方报告查看风险项']).map((txt, i) => <li key={i}>{txt}</li>)}
                     </ul>
                   </div>
                   <div className="card bg-gray-50 flex-col gap-2">
-                    <div className="flex items-center gap-2 font-bold text-primary"><Lightbulb size={16} /> 淇敼寤鸿</div>
+                    <div className="flex items-center gap-2 font-bold text-primary"><Lightbulb size={16} /> 修改建议</div>
                     <ul className="text-sm flex-col gap-1 list-disc pl-4 text-secondary">
                       {(result.suggestions.length ? result.suggestions : ['请结合上方报告查看建议项']).map((txt, i) => <li key={i}>{txt}</li>)}
                     </ul>
@@ -531,7 +533,7 @@ const ResumeAgent = () => {
                   <div className="card bg-gray-50 flex-col gap-2">
                     <div className="flex items-center gap-2 font-bold text-warning"><Search size={16} /> 面试深挖点</div>
                     <ul className="text-sm flex-col gap-2 text-secondary">
-                      {(result.deepDive.length ? result.deepDive : ['璇风粨鍚堜笂鏂规姤鍛婃煡鐪嬫繁鎸栫偣']).map((txt, i) => (
+                      {(result.deepDive.length ? result.deepDive : ['请结合上方报告查看深挖点']).map((txt, i) => (
                         <li key={i} className="flex items-start gap-2 bg-white p-2 rounded border">
                           <ChevronRight size={14} className="mt-1 flex-shrink-0 text-warning" /> <span>{txt}</span>
                         </li>
@@ -564,7 +566,7 @@ const ResumeAgent = () => {
               </div>
               <button className="btn btn-sm" type="button" onClick={() => setHistoryOpen(false)}>
                 <X size={14} />
-                鍏抽棴
+                关闭
               </button>
             </div>
 

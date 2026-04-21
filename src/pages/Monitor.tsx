@@ -56,12 +56,12 @@ const TASK_TYPE_OPTION_VALUES = new Set(TASK_TYPE_OPTIONS.map((item) => item.val
 const fetchApi = async <T,>(path: string): Promise<T> => {
   const res = await fetch(path);
   if (!res.ok) {
-    throw new Error(`璇锋眰澶辫触锛?{res.status}`);
+    throw new Error(`请求失败：${res.status}`);
   }
 
   const json = await res.json();
   if (json.code !== '0000') {
-    throw new Error(json.info || '璇锋眰澶辫触');
+    throw new Error(json.info || '请求失败');
   }
 
   return json.data as T;
@@ -391,7 +391,7 @@ const Monitor = () => {
       <div className="flex-col gap-6 h-full overflow-y-auto pr-1">
         <div className="card flex-col gap-4">
           <div>
-            <div className="text-2xl font-bold">瀹¤鐩戞帶涓績</div>
+            <div className="text-2xl font-bold">审计监控中心</div>
             <div className="text-sm text-muted mt-1">统一查看内容自动化、文档知识助手、简历评估和模拟面试的执行状态、Token 消耗和异常事件。</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 240px))', gap: 16 }}>
